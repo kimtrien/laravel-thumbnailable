@@ -1,0 +1,19 @@
+{
+    "name": "kjmtrue/laravel-thumbnailable",
+    "description": "Laravel Thumbnailable Model",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "kjmtrue",
+            "email": "kimtrien@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.6.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "Kjmtrue\\Thumbnailable\\": "src/"
+        }
+    }
+}
