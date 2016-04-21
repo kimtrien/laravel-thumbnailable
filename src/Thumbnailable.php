@@ -38,6 +38,11 @@ trait Thumbnailable
         });
     }
 
+    /**
+     * @param $field_name
+     * @param null $size
+     * @return string
+     */
     public function thumb($field_name, $size = null)
     {
         $filename      = $this->getAttribute($field_name);
@@ -52,6 +57,20 @@ trait Thumbnailable
         return $this->getPublicUrl() . '/' . $filename;
     }
 
+    public function rethumb($field_name)
+    {
+        if (isset($this->thumbnailable) && isset($this->thumbnailable['fields']) && isset($this->thumbnailable['fields'][$field_name])) {
+            $field_value = $this->thumbnailable['fields'][$field_name];
+
+            $filename = $this->getAttribute($field_name);
+            $sizes = $field_value['sizes'];
+
+            if (file_exists($this->getStorageDir() . DIRECTORY_SEPARATOR . $filename)) {
+                $this->saveThumb($filename, $sizes);
+            }
+        }
+    }
+
     protected function upload_file()
     {
         if (isset($this->thumbnailable) && isset($this->thumbnailable['fields'])) {
@@ -59,10 +78,13 @@ trait Thumbnailable
                 $sizes = $field_value['sizes'];
 
                 $file = $this->getAttribute($field_name);
-                $filename = $this->saveFile($file);
-                $this->setAttribute($field_name, $filename);
 
-                $this->saveThumb($filename, $sizes);
+                if ($file instanceof UploadedFile) {
+                    $filename = $this->saveFile($file);
+                    $this->setAttribute($field_name, $filename);
+
+                    $this->saveThumb($filename, $sizes);
+                }
             }
         }
     }
@@ -73,8 +95,9 @@ trait Thumbnailable
             foreach ($this->thumbnailable['fields'] as $field_name => $field_value) {
                 $sizes = $field_value['sizes'];
 
-                if ($this->isDirty($field_name)) {
-                    $file = $this->getAttribute($field_name);
+                $file = $this->getAttribute($field_name);
+
+                if ($file instanceof UploadedFile) {
                     $filename = $this->saveFile($file);
                     $this->setAttribute($field_name, $filename);
 
@@ -135,7 +158,7 @@ trait Thumbnailable
         $full_file     = $this->getStorageDir() . DIRECTORY_SEPARATOR . $filename;
 
         // Image::configure(array('driver' => 'imagick'));
-        $image = Image::make($full_file);
+        // $image = Image::make($full_file);
 
         foreach ($sizes as $size_code => $size) {
             $thumb_name = $this->getStorageDir() . DIRECTORY_SEPARATOR . $original_name . '_' . $size_code . '.' . $extension;
@@ -143,10 +166,14 @@ trait Thumbnailable
             $width = $wh[0];
             $height = $wh[1];
 
-            $image = Image::make($full_file);
-            $image->fit($width, $height, function ($constraint) {
-                $constraint->upsize();
-            })->save($thumb_name, $this->getQuality());
+            try {
+                $image = Image::make($full_file);
+                $image->fit($width, $height, function ($constraint) {
+                    $constraint->upsize();
+                })->save($thumb_name, $this->getQuality());
+            } catch (\Exception $e) {
+                echo "Error {$full_file}";
+            }
         }
     }
 
@@ -190,7 +217,7 @@ trait Thumbnailable
             return $this->thumbnailable['quality'];
         }
 
-        return \Config::get('thumbnailable.quality', 70);
+        return \Config::get('thumbnailable.quality', 100);
     }
 
     protected function getPublicUrl()
