@@ -1,6 +1,7 @@
 <?php
 namespace Kjmtrue\Thumbnailable;
 
+use Config;
 use File;
 use Illuminate\Database\Eloquent\Model;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -181,14 +182,16 @@ trait Thumbnailable
     {
         $filedir  = $this->getStorageDir();
 
-        $actual_name   = pathinfo($filename, PATHINFO_FILENAME);
+        $actual_name   = str_slug(pathinfo($filename, PATHINFO_FILENAME));
         $original_name = $actual_name;
         $extension     = pathinfo($filename, PATHINFO_EXTENSION);
+
+        $filename = $actual_name . "." . $extension;
 
         $i = 1;
         while(file_exists($filedir . DIRECTORY_SEPARATOR . $actual_name . "." . $extension))
         {
-            $actual_name = (string) $original_name . $i;
+            $actual_name = (string) $original_name . '-' . $i;
             $filename    = $actual_name . "." . $extension;
             $i++;
         }
@@ -208,7 +211,7 @@ trait Thumbnailable
             }
         }
 
-        return \Config::get('thumbnailable.storage_dir', storage_path('images'));
+        return Config::get('thumbnailable.storage_dir', storage_path('images'));
     }
 
     protected function getQuality()
@@ -217,7 +220,7 @@ trait Thumbnailable
             return $this->thumbnailable['quality'];
         }
 
-        return \Config::get('thumbnailable.quality', 100);
+        return Config::get('thumbnailable.quality', 100);
     }
 
     protected function getPublicUrl()
@@ -232,6 +235,6 @@ trait Thumbnailable
             }
         }
 
-        return \Config::get('thumbnailable.storage_dir', 'storage/images');
+        return Config::get('thumbnailable.storage_dir', 'storage/images');
     }
 }
