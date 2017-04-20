@@ -10,6 +10,7 @@ use Intervention\Image\ImageManagerStatic as Image;
 trait Thumbnailable
 {
 //    protected $thumbnailable = [
+//        'version'         => 2,
 //        'storage_dir'     => 'public/demo',
 //        'storage_slug_by' => 'name',
 //        'fields'          => [
@@ -42,20 +43,47 @@ trait Thumbnailable
     /**
      * @param $field_name
      * @param null $size
+     * @param bool $static_url
      * @return string
      */
-    public function thumb($field_name, $size = null)
+    public function thumb($field_name, $size = null, $static_url = false)
     {
-        $filename      = $this->getAttribute($field_name);
+        $filename  = $this->getAttribute($field_name);
 
-        $original_name = pathinfo($filename, PATHINFO_FILENAME);
-        $extension     = pathinfo($filename, PATHINFO_EXTENSION);
+        if ($this->isVer(2)) {
+            $image_url = $filename;
 
-        if ($size) {
-            $filename = $original_name . '_' . $size . '.' . $extension;
+            if ($size) {
+                if (is_string($size) && isset($this->thumbnailable['fields'][$field_name]['sizes'][$size])) {
+                    $size_demission = $this->thumbnailable['fields'][$field_name]['sizes'][$size];
+                } elseif (is_array($size)) {
+                    $width  = $size[0];
+                    $height = isset($size[1]) ? $size[1] : $size[0];
+                    $size_demission = $width . 'x' . $height;
+                } elseif (preg_match("/([\d]+)x([\d]+)/", $size)) {
+                    $size_demission = $size;
+                }
+
+                if (isset($size_demission)) {
+                    $image_url = str_replace("uploads", "thumbs/" . $size_demission, $filename);
+                }
+            }
+        } else {
+            $original_name = pathinfo($filename, PATHINFO_FILENAME);
+            $extension     = pathinfo($filename, PATHINFO_EXTENSION);
+
+            if ($size) {
+                $filename = $original_name . '_' . $size . '.' . $extension;
+            }
+
+            $image_url = $this->getPublicUrl() . '/' . $filename;
         }
 
-        return $this->getPublicUrl() . '/' . $filename;
+        if ($static_url) {
+            return static_file($image_url);
+        }
+
+        return $image_url;
     }
 
     public function rethumb($field_name)
@@ -81,6 +109,13 @@ trait Thumbnailable
                 $file = $this->getAttribute($field_name);
 
                 if ($file instanceof UploadedFile) {
+                    $filename = $this->saveFile($file);
+                    $this->setAttribute($field_name, $filename);
+
+                    $this->saveThumb($filename, $sizes);
+                } elseif (\Request::hasFile($field_name)) {
+                    $file = \Request::file($field_name);
+
                     $filename = $this->saveFile($file);
                     $this->setAttribute($field_name, $filename);
 
@@ -129,13 +164,17 @@ trait Thumbnailable
         $original_name = pathinfo($filename, PATHINFO_FILENAME);
         $extension     = pathinfo($filename, PATHINFO_EXTENSION);
 
-        $original_file = $this->getStorageDir() . DIRECTORY_SEPARATOR . $filename;
-        File::delete($original_file);
+        if ($this->isVer(2)) {
+            File::delete($filename);
+        } else {
+            $original_file = $this->getStorageDir() . DIRECTORY_SEPARATOR . $filename;
+            File::delete($original_file);
 
-        foreach ($sizes as $size_code => $size) {
-            $thumb_name = $this->getStorageDir() . DIRECTORY_SEPARATOR . $original_name . '_' . $size_code . '.' . $extension;
+            foreach ($sizes as $size_code => $size) {
+                $thumb_name = $this->getStorageDir() . DIRECTORY_SEPARATOR . $original_name . '_' . $size_code . '.' . $extension;
 
-            File::delete($thumb_name);
+                File::delete($thumb_name);
+            }
         }
     }
 
@@ -146,34 +185,46 @@ trait Thumbnailable
         if ($file->isValid()) {
             $file->move($this->getStorageDir(), $filename);
 
+            if ($this->isVer(2)) {
+                return $this->getStorageDir() . '/' . $filename;
+            }
+
             return $filename;
         }
 
         return '';
     }
 
+    /**
+     * Remove auto create thumbs from version 2
+     *
+     * @param $filename
+     * @param $sizes
+     */
     protected function saveThumb($filename, $sizes)
     {
-        $original_name = pathinfo($filename, PATHINFO_FILENAME);
-        $extension     = pathinfo($filename, PATHINFO_EXTENSION);
-        $full_file     = $this->getStorageDir() . DIRECTORY_SEPARATOR . $filename;
+        if (!$this->isVer(2)) {
+            $original_name = pathinfo($filename, PATHINFO_FILENAME);
+            $extension     = pathinfo($filename, PATHINFO_EXTENSION);
+            $full_file     = $this->getStorageDir() . DIRECTORY_SEPARATOR . $filename;
 
-        // Image::configure(array('driver' => 'imagick'));
-        // $image = Image::make($full_file);
+            // Image::configure(array('driver' => 'imagick'));
+            // $image = Image::make($full_file);
 
-        foreach ($sizes as $size_code => $size) {
-            $thumb_name = $this->getStorageDir() . DIRECTORY_SEPARATOR . $original_name . '_' . $size_code . '.' . $extension;
-            $wh = explode('x', $size);
-            $width = $wh[0];
-            $height = $wh[1];
+            foreach ($sizes as $size_code => $size) {
+                $thumb_name = $this->getStorageDir() . DIRECTORY_SEPARATOR . $original_name . '_' . $size_code . '.' . $extension;
+                $wh = explode('x', $size);
+                $width = $wh[0];
+                $height = $wh[1];
 
-            try {
-                $image = Image::make($full_file);
-                $image->fit($width, $height, function ($constraint) {
-                    $constraint->upsize();
-                })->save($thumb_name, $this->getQuality());
-            } catch (\Exception $e) {
-                echo "Error {$full_file}";
+                try {
+                    $image = Image::make($full_file);
+                    $image->fit($width, $height, function ($constraint) {
+                        $constraint->upsize();
+                    })->save($thumb_name, $this->getQuality());
+                } catch (\Exception $e) {
+                    echo "Error {$full_file}";
+                }
             }
         }
     }
@@ -236,5 +287,10 @@ trait Thumbnailable
         }
 
         return Config::get('thumbnailable.storage_dir', 'storage/images');
+    }
+
+    protected function isVer($ver_num)
+    {
+        return isset($this->thumbnailable['version']) && $this->thumbnailable['version'] == $ver_num;
     }
 }
