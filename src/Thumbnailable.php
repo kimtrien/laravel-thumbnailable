@@ -161,7 +161,12 @@ trait Thumbnailable
         $original_name = pathinfo($filename, PATHINFO_FILENAME);
         $extension     = pathinfo($filename, PATHINFO_EXTENSION);
 
-        if ($this->isVer(2)) {
+        $is_ver_3 = false;
+        if ($this->isVer(3) && ($filename && basename($filename) != $filename)) {
+            $is_ver_3 = true;
+        }
+
+        if (($this->isVer(2) || $is_ver_3) && !empty($this->thumbnailable['force_delete'])) {
             File::delete($filename);
         } else {
             $original_file = $this->getStorageDir() . DIRECTORY_SEPARATOR . $filename;
@@ -182,7 +187,7 @@ trait Thumbnailable
         if ($file->isValid()) {
             $file->move($this->getStorageDir(), $filename);
 
-            if ($this->isVer(2)) {
+            if ($this->isVer(2) || $this->isVer(3)) {
                 return $this->getStorageDir() . '/' . $filename;
             }
 
@@ -288,6 +293,10 @@ trait Thumbnailable
 
     protected function isVer($ver_num)
     {
-        return isset($this->thumbnailable['version']) && $this->thumbnailable['version'] == $ver_num;
+        if (isset($this->thumbnailable['version'])) {
+            return $this->thumbnailable['version'] == $ver_num;
+        }
+
+        return 1 == $ver_num;
     }
 }
