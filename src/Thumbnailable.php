@@ -10,18 +10,10 @@ use Intervention\Image\ImageManagerStatic as Image;
 trait Thumbnailable
 {
 //    protected $thumbnailable = [
-//        'version'         => 2,
-//        'storage_dir'     => 'public/demo',
-//        'storage_slug_by' => 'name',
+//        'version'         => 3,
+//        'storage_dir'     => 'uploads/files',
 //        'fields'          => [
-//            'image' => [
-//                'default_size' => 'S',
-//                'sizes'        => [
-//                    'S' => '50x50',
-//                    'M' => '100x100',
-//                    'L' => '200x200',
-//                ]
-//            ]
+//            'image' => []
 //        ],
 //    ];
 
@@ -50,7 +42,12 @@ trait Thumbnailable
     {
         $filename  = $this->getAttribute($field_name);
 
-        if ($this->isVer(2)) {
+        $is_ver_3 = false;
+        if ($this->isVer(3) && ($filename && basename($filename) != $filename)) {
+            $is_ver_3 = true;
+        }
+
+        if ($this->isVer(2) || $is_ver_3) {
             $image_url = $filename;
 
             if ($size) {
