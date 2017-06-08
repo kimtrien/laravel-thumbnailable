@@ -42,12 +42,11 @@ trait Thumbnailable
     {
         $filename  = $this->getAttribute($field_name);
 
-        $is_ver_3 = false;
-        if ($this->isVer(3) && ($filename && basename($filename) != $filename)) {
-            $is_ver_3 = true;
+        if ($this->isVer(3) && ($filename && basename($filename) == $filename)) {
+            $filename = $this->getPublicUrl() . '/' . $filename;;
         }
 
-        if ($this->isVer(2) || $is_ver_3) {
+        if (!$this->isVer(1)) {
             $image_url = $filename;
 
             if ($size) {
