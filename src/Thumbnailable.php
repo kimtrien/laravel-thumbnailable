@@ -10,10 +10,18 @@ use Intervention\Image\ImageManagerStatic as Image;
 trait Thumbnailable
 {
 //    protected $thumbnailable = [
-//        'version'         => 3,
-//        'storage_dir'     => 'uploads/files',
+//        'version'         => 2,
+//        'storage_dir'     => 'public/demo',
+//        'storage_slug_by' => 'name',
 //        'fields'          => [
-//            'image' => []
+//            'image' => [
+//                'default_size' => 'S',
+//                'sizes'        => [
+//                    'S' => '50x50',
+//                    'M' => '100x100',
+//                    'L' => '200x200',
+//                ]
+//            ]
 //        ],
 //    ];
 
@@ -42,11 +50,7 @@ trait Thumbnailable
     {
         $filename  = $this->getAttribute($field_name);
 
-        if ($this->isVer(3) && ($filename && basename($filename) == $filename)) {
-            $filename = $this->getPublicUrl() . '/' . $filename;;
-        }
-
-        if (!$this->isVer(1)) {
+        if ($this->isVer(2)) {
             $image_url = $filename;
 
             if ($size) {
@@ -104,7 +108,9 @@ trait Thumbnailable
 
                 $file = $this->getAttribute($field_name);
 
-                if ($file instanceof UploadedFile) {
+                if (is_string($file)) {
+                    $this->setAttribute($field_name, $file);
+                } elseif ($file instanceof UploadedFile) {
                     $filename = $this->saveFile($file);
                     $this->setAttribute($field_name, $filename);
 
@@ -160,12 +166,7 @@ trait Thumbnailable
         $original_name = pathinfo($filename, PATHINFO_FILENAME);
         $extension     = pathinfo($filename, PATHINFO_EXTENSION);
 
-        $is_ver_3 = false;
-        if ($this->isVer(3) && ($filename && basename($filename) != $filename)) {
-            $is_ver_3 = true;
-        }
-
-        if (($this->isVer(2) || $is_ver_3) && !empty($this->thumbnailable['force_delete'])) {
+        if ($this->isVer(2)) {
             File::delete($filename);
         } else {
             $original_file = $this->getStorageDir() . DIRECTORY_SEPARATOR . $filename;
@@ -186,7 +187,7 @@ trait Thumbnailable
         if ($file->isValid()) {
             $file->move($this->getStorageDir(), $filename);
 
-            if ($this->isVer(2) || $this->isVer(3)) {
+            if ($this->isVer(2)) {
                 return $this->getStorageDir() . '/' . $filename;
             }
 
@@ -292,10 +293,6 @@ trait Thumbnailable
 
     protected function isVer($ver_num)
     {
-        if (isset($this->thumbnailable['version'])) {
-            return $this->thumbnailable['version'] == $ver_num;
-        }
-
-        return 1 == $ver_num;
+        return isset($this->thumbnailable['version']) && $this->thumbnailable['version'] == $ver_num;
     }
 }
