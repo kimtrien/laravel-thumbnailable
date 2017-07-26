@@ -50,7 +50,7 @@ trait Thumbnailable
     {
         $filename  = $this->getAttribute($field_name);
 
-        if ($this->isVer(2)) {
+        if ($this->isVer(2) || $this->isVer(3)) {
             $image_url = $filename;
 
             if ($size) {
