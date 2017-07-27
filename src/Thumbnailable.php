@@ -166,7 +166,7 @@ trait Thumbnailable
         $original_name = pathinfo($filename, PATHINFO_FILENAME);
         $extension     = pathinfo($filename, PATHINFO_EXTENSION);
 
-        if ($this->isVer(2)) {
+        if ($this->isVer(2) || $this->isVer(3)) {
             File::delete($filename);
         } else {
             $original_file = $this->getStorageDir() . DIRECTORY_SEPARATOR . $filename;
@@ -187,7 +187,7 @@ trait Thumbnailable
         if ($file->isValid()) {
             $file->move($this->getStorageDir(), $filename);
 
-            if ($this->isVer(2)) {
+            if ($this->isVer(2) || $this->isVer(3)) {
                 return $this->getStorageDir() . '/' . $filename;
             }
 
@@ -205,7 +205,7 @@ trait Thumbnailable
      */
     protected function saveThumb($filename, $sizes)
     {
-        if (!$this->isVer(2)) {
+        if ($this->isVer(1)) {
             $original_name = pathinfo($filename, PATHINFO_FILENAME);
             $extension     = pathinfo($filename, PATHINFO_EXTENSION);
             $full_file     = $this->getStorageDir() . DIRECTORY_SEPARATOR . $filename;
